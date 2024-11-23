@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Kdaj gremo v penzijo?</title>
+        <!-- <link rel="stylesheet" href="style.css"> -->
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: inherit;
+            }
+            html {
+                font-size: 100%;
+                box-sizing: border-box;
+            }
+            body {
+                height: 100vh;
+                background-image: linear-gradient(to top left, #753682 0%, #bf2e34 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            div {
+                font-family: 'Nunito', sans-serif;
+                position: relative;
+                width: 40rem;
+                height: 35rem;
+                background-color: rgba(255, 255, 255, 0.05);
+                box-shadow: 0 3rem 5rem rgba(0, 0, 0, 0.25);
+                border-radius: 12px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 1rem;
+            }
+            .number {
+                font-size: 90px;
+                color: black;
+            }
+            .datum_text {
+                font-size: 40px;
+                cursor: pointer;
+            }
+            .title {
+                padding-bottom: 2rem;
+            }
+
+            .hidden {
+                display: none;
+            }
+            .text1 {
+                margin-top: 2rem;
+            }
+            
+            .datum_input {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 20rem;
+                height: 25rem;
+            
+                background-image: linear-gradient(to top left, #753682 0%, #bf2e34 100%);
+                padding: 2rem;
+                border-radius: 12px;
+                box-shadow: 0 3rem 5rem rgba(0, 0, 0, 0.3);
+                z-index: 10;
+            }
+
+            .input {
+                width: 12rem;
+                border: none;
+                background-color: rgba(255, 255, 255, 0.4);
+                font-family: inherit;
+                font-size: 1.5rem;
+                text-align: center;
+                color: #333;
+                /* padding: 0.3rem 1rem; */
+                padding: 0.3rem 1rem;
+                border-radius: 10rem;
+                transition: all 0.3s;
+                margin: 1rem;
+            }
+
+            .overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0);
+                backdrop-filter: blur(3px);
+                z-index: 5;
+            }
+            #delovniki {
+                cursor: pointer;
+            }
+            #gameContainer {
+                text-align: center;
+                position: absolute;
+                z-index: 10;
+            }
+
+            #gameBoard {
+                border: 3px solid;
+            }
+
+            #scoreText {
+                font-family: "Permanent Marker", cursive;
+                font-size: 100px;
+            }
+            #resetBtn {
+                font-family: "Permanent Marker", cursive;
+                font-size: 22px;
+                width: 100px;
+                height: 50px;
+                border: 4px solid;
+                border-radius: 15px;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body class="body">
+        <div>
+        <h1 class="title">Število dni do penzije:</h1>
+        <h2 class="text">Vseh dni:</h2>
+        <h2 class="number" id="absolute">000</h2>
+        <h2 class="text">Delovnikov:</h2>
+        <h2 class="number" id="delovniki">000</h2>
+        <h2 class="text">Naslednji praznik med tednom:</h2>
+        <h2 class="text praznik">None</h2>
+        <h2 class="text1">Datum upokojitve:</h2>
+        <h2 class="datum_text" draggable="true">1.1.1970</h2>
+        </div>
+        <!-- MODAL input -->
+        <div class="datum_input hidden">
+            <h2 class="text2">Datum upokojitve</h2>
+            <br>
+            <form class="form form--transfer">
+            <input type="number" class="input day_input" placeholder="Dan" onInput="this.value = this.value.slice(0, 2)"/>
+            <br>
+            <input type="number" class="input month_input" placeholder="Mesec" onInput="this.value = this.value.slice(0, 2)"/>
+            <br>
+            <input type="number" class="input year_input" placeholder="Leto" onInput="this.value = this.value.slice(0, 4)"/>
+            <br>
+            <br>
+            <button class="input btn_input">&rarr;</button>
+            </form>
+        </div>
+        <div class="overlay hidden"></div>
+        <div class="hidden" id="gameContainer">
+            <canvas id="gameBoard" width="500" height="500"></canvas>
+            <div id="scoreText">0</div>
+            <div id="highscore">0</div>
+            <button id="resetBtn">Reset</button>
+        </div>
+    </body>
+    <!-- <script src="script.js"></script> -->
+    <script>
+"use strict"
+
+
+// Elements
+const allDays = document.querySelector("#absolute");
+const delovniki = document.querySelector("#delovniki");
+const datum = document.querySelector(".datum_text");
+const datumBtn = document.querySelector(".datum_text");
+const modal = document.querySelector(".datum_input");
+const btn = document.querySelector(".btn_input");
+const dayInput = document.querySelector(".day_input");
+const monthInput = document.querySelector(".month_input");
+const yearInput = document.querySelector(".year_input");
+const overlay = document.querySelector(".overlay");
+const disPraznik = document.querySelector(".praznik")
+const snakeGame = document.querySelector("#gameContainer")
+
+
+// Functions
+const daysPassed = (date1, date2) => {
+    if (date1 > date2) {
+        return 0;
+    } else return Math.floor(Math.abs((date2 - date1) / (1000 * 60 * 60 * 24)+1));
+}
+
+let nextPraznik;
+const getBussinessDays = function(targetDate) {
+    let count = 0; 
+    const curDate = new Date(danes.getTime());
+    
+    if (curDate > targetDate) return 0;
+
+
+    while (curDate <= targetDate) {
+        const dayOfWeak = curDate.getDay();
+        const string = `${curDate.getDate()}-${curDate.getMonth()+1}`;
+        const stringYear = `${curDate.getDate()}-${curDate.getMonth()+1}-${curDate.getFullYear()}`;
+
+        if (dayOfWeak !== 0 && dayOfWeak !==6 && !prazniki.includes(string) && !easterDates.includes(stringYear)) count++;
+        if (!nextPraznik) {
+            if (dayOfWeak !== 0 && dayOfWeak !==6 && prazniki.includes(string) || easterDates.includes(stringYear)) {
+                // const tedn = ["NED", "PON", "TOR", "SRE", "ČET", "PET", "SOB"];
+                // const dan = tedn[dayOfWeak];
+                // nextPraznik = `${dan}, ${curDate.getDate()}.${curDate.getMonth()+1}.${curDate.getFullYear()}`
+                const options = {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    weekday: "long"
+                }
+                nextPraznik = new Intl.DateTimeFormat("sl-SI", options).format(curDate)
+            }
+        }
+        curDate.setDate(curDate.getDate() + 1); // samo spremeni Date v zapisu casa 
+    }
+    return count;
+}
+
+const parseDate = function(string) {
+    const [day, month, year] = string.split(".");
+    return new Date(Number(year), Number(month-1), Number(day));
+}
+
+const removeInput = function () {
+    modal.classList.add("hidden")
+    overlay.classList.add("hidden")
+    snakeGame.classList.add("hidden");
+    window.removeEventListener("keydown", changeDirection)
+
+}
+
+//// Velikonocni prazniki
+let easterDates = []
+const populateEasterDates = function(targetYear) {
+    let curYear = danes.getFullYear();
+    const goldenNumberHashmap = new Map();
+    goldenNumberHashmap
+        .set(0,	[27, 3])
+        .set(1, [14, 4])
+        .set(2, [3, 4])
+        .set(3, [23, 3])
+        .set(4, [11, 4])
+        .set(5, [31, 3])
+        .set(6, [18, 4])
+        .set(7, [8, 4])
+        .set(8, [28, 3])
+        .set(9, [16, 4])
+        .set(10, [5, 4])
+        .set(11, [25, 3])
+        .set(12, [13, 4])
+        .set(13, [2, 4])
+        .set(14, [22, 3])
+        .set(15, [10, 4])
+        .set(16, [30, 3])
+        .set(17, [17, 4])
+        .set(18, [7, 4])
+        .set(19, [27, 3]);
+
+
+    while (curYear <= targetYear) {
+        const goldenNumber = (curYear-(Math.floor(curYear/19))*19)+1;
+        const [day, month] = goldenNumberHashmap.get(goldenNumber);
+        const date = new Date(curYear, month-1, day);
+        const dayOfWeak = date.getDay();
+        const untillSunday = 7-dayOfWeak;
+        const timestamp = date.getTime() + untillSunday*24*60*60*1000;
+        const newDate = new Date(timestamp)
+        const outputDay = newDate.getDate();
+        const outputMonth = newDate.getMonth();
+        easterDates.push(`${outputDay+1}-${outputMonth+1}-${curYear}`); // day +1 da prestavi iz NED na PON
+        curYear++;
+    }
+    console.log(easterDates);
+}
+
+// Datumi
+const danes = new Date();
+console.log(danes.toDateString().slice(0,4));
+let targetDate;
+if (!localStorage.setDatum) {
+    localStorage.setItem("setDatum", "1.1.1970");
+}
+targetDate = parseDate(localStorage.getItem("setDatum"));
+
+populateEasterDates(targetDate.getFullYear()); // ob refreshu populata z zadnjim inputom
+
+// Exceptions
+const prazniki = [
+    "1-1",
+    "2-1",
+    "8-2",
+    "27-4",
+    "1-5",
+    "2-5",
+    "25-6",
+    "15-8",
+    "31-10",
+    "1-11",
+    "25-12",
+    "26-12"
+]
+
+// const easter = [
+//     "21-4-2025",
+//     "6-4-2026",
+//     "29-3-2027",
+//     "17-4-2028",
+//     "2-4-2029",
+//     "22-4-2030",
+//     "14-4-2031",
+//     "29-3-2032",
+//     "18-4-2033",
+//     "10-4-2034"
+// ]
+
+
+// Display elements
+const displayResult = function(targetDate) {
+    // Vsi dnevi
+    allDays.textContent = daysPassed(danes, targetDate);
+
+    // Samo delovniki
+    delovniki.textContent = getBussinessDays(targetDate);
+
+    // Praznik
+    disPraznik.textContent = nextPraznik;
+
+    // Datum
+    //datum.textContent = `${targetDate.getDate()}.${targetDate.getMonth()+1}.${targetDate.getFullYear()}`
+    const options = {      // config object za ISO format
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    }
+    datum.textContent = new Intl.DateTimeFormat("sl-SI", options).format(targetDate)
+
+}
+displayResult(targetDate)
+
+
+// Event handlers
+datumBtn.addEventListener("click", function() {
+    modal.classList.remove("hidden")
+    overlay.classList.remove("hidden")
+    dayInput.focus()
+
+    overlay.addEventListener("click", function() {
+        dayInput.value = monthInput.value = yearInput.value = ""
+        removeInput()
+    })
+})
+
+btn.addEventListener("click", function(event) {
+    event.preventDefault();
+    const day = dayInput.value;
+    const month = monthInput.value;
+    const year = yearInput.value;
+
+    if (day.length !== 0 && month.length !== 0 && year.length !== 0) {
+        if (day < 32 && month < 13 && year > 2023) {
+            const input = `${day}.${month}.${year}`
+            const output = parseDate(input)
+            localStorage.setItem("setDatum", input)
+
+            easterDates = [];
+            populateEasterDates(year);
+            displayResult(output)  
+            removeInput()
+            dayInput.value = monthInput.value = yearInput.value = ""
+        }
+    }
+})
+
+delovniki.addEventListener("click", function(event) {
+    event.preventDefault();
+    snakeGame.classList.remove("hidden");
+    overlay.classList.remove("hidden");
+    window.addEventListener("keydown", changeDirection);
+    resetBtn.addEventListener("click", resetGame);
+    gameStart();
+})
+
+// Snake
+const gameBoard = document.querySelector("#gameBoard");
+const ctx = gameBoard.getContext("2d");
+const scoreText = document.querySelector("#scoreText");
+const highscoreText = document.querySelector("#highscore");
+const resetBtn = document.querySelector("#resetBtn");
+const gameWidth = gameBoard.width;
+const gameHeight = gameBoard.height;
+const boardBackground = "white";
+const snakeColor = "green"
+const snakeBorder = "green";
+const foodColor = "red";
+const unitSize = 25;
+let running = false;
+let xVelocity = unitSize;
+let yVelocity = 0;
+let foodX;
+let foodY;
+let score = 0;
+let highscore;
+let snake = [
+    {x:unitSize *4, y:0},
+    {x:unitSize *3, y:0},
+    {x:unitSize *2, y:0},
+    {x:unitSize, y:0},
+    {x:0, y:0},
+]
+
+
+// Funkcije
+const gameStart = function() {
+    running = true;
+    scoreText.textContent = score;
+    getHighscore();
+    createFood();
+    drawFood();
+    nextTick();
+};
+const getHighscore = function () {
+    if (!localStorage.setHighscore) {
+    localStorage.setItem("setHighscore", 0);
+    }
+    highscore = localStorage.getItem("setHighscore");
+    console.log(highscore);
+    highscoreText.textContent = `Rekord: ${highscore}`;
+}
+const nextTick = function() {
+    if(running) {
+        setTimeout(() => {
+            clearBoard();
+            drawFood();
+            moveSnake();
+            drawSnake();
+            checkGameOver();
+            nextTick();
+        }, 75);
+    } else {
+        displayGameOver();
+    }
+};
+const clearBoard = function() {
+    ctx.fillStyle = boardBackground;
+    ctx.fillRect(0, 0, gameWidth, gameHeight);
+};
+const createFood = function() {
+    const randomFood = function(min, max) {
+        const randNum = Math.round((Math.random() * (max - min) + min) / unitSize) * unitSize;
+        return randNum;
+    }
+    foodX = randomFood(0, gameWidth - unitSize);
+    foodY = randomFood(0, gameWidth - unitSize);
+    for(let i = 1; i < snake.length; i+=1) {
+        if(snake[i].x == foodX && snake[i].y == foodY) {
+            createFood();
+        }
+    };
+};
+const drawFood = function() {
+    ctx.fillStyle = foodColor;
+    ctx.fillRect(foodX, foodY, unitSize, unitSize)
+};
+const moveSnake = function() {
+    const head = {x: snake[0].x + xVelocity, y: snake[0].y + yVelocity}
+    snake.unshift(head);
+    // if food was eaten
+    if(snake[0].x == foodX && snake[0].y == foodY) {
+        score+=1;
+        scoreText.textContent = score;
+        createFood()
+
+    } else {
+        snake.pop()
+    }
+};
+const drawSnake = function() {
+    ctx.fillStyle = snakeColor;
+    ctx.strokeStyle = snakeBorder;
+    snake.forEach(snakePart => {
+        ctx.fillRect(snakePart.x, snakePart.y, unitSize, unitSize)
+        ctx.strokeRect(snakePart.x, snakePart.y, unitSize, unitSize)
+    })
+};
+const changeDirection = function(event) {
+    event.preventDefault();
+    const keyPressed = event.keyCode;
+    const LEFT = 37//65;
+    const UP = 38//87;
+    const RIGHT = 39//68;
+    const DOWN = 40//83;
+
+    const goingUp = (yVelocity == -unitSize);
+    const goingDown = (yVelocity == unitSize);
+    const goingRight = (xVelocity == unitSize);
+    const goingLeft = (xVelocity == -unitSize);
+
+    switch(true) {
+        case(keyPressed == LEFT && !goingRight):
+            xVelocity = -unitSize;
+            yVelocity = 0;
+            break;
+        case(keyPressed == UP && !goingDown):
+            xVelocity = 0;
+            yVelocity = -unitSize;
+            break;
+        case(keyPressed == RIGHT && !goingLeft):
+            xVelocity = unitSize;
+            yVelocity = 0;
+            break;
+        case(keyPressed == DOWN && !goingUp):
+            xVelocity = 0;
+            yVelocity = unitSize;
+            break;
+    }
+
+};
+const checkGameOver = function() {
+    switch(true){
+        case (snake[0].x < 0):
+            running = false;
+            break;
+        case (snake[0].x >= gameWidth):
+            running = false;
+            break;
+        case (snake[0].y < 0):
+            running = false;
+            break;
+        case (snake[0].y >= gameHeight):
+            running = false;
+            break;
+    }
+    for(let i = 1; i < snake.length; i+=1) {
+        if(snake[i].x == snake[0].x && snake[i].y == snake[0].y) {
+            running = false;
+        }
+    }
+};
+const displayGameOver = function() {
+    ctx.font = "50px MV Boli"
+    ctx.fillStyle = "black";
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER!", gameWidth / 2, gameHeight / 2);
+    running = false;
+    if (score > highscore) {
+        localStorage.setItem("setHighscore", score)
+    }
+};
+const resetGame = function() {
+    score = 0;
+    xVelocity = unitSize;
+    yVelocity = 0;
+    snake = [
+        {x:unitSize *4, y:0},
+        {x:unitSize *3, y:0},
+        {x:unitSize *2, y:0},
+        {x:unitSize, y:0},
+        {x:0, y:0},
+    ];
+    gameStart();
+};
+
+
+
+
+
+
+
+// Snake
+    </script>
+</html>
+
